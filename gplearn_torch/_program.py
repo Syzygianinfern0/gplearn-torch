@@ -5,6 +5,7 @@ computer program. It is used for creating and evolving programs used in the
 :mod:`gplearn.genetic` module.
 """
 
+# Author: S P Sharan <spsharan.com>
 # Author: Trevor Stephens <trevorstephens.com>
 #
 # License: BSD 3 clause
@@ -12,6 +13,7 @@ computer program. It is used for creating and evolving programs used in the
 from copy import copy
 
 import numpy as np
+import torch
 from sklearn.utils.random import sample_without_replacement
 
 from .functions import _Function
@@ -19,7 +21,6 @@ from .utils import check_random_state
 
 
 class _Program(object):
-
     """A program-like representation of the evolved program.
 
     This is the underlying data-structure used by the public classes in the
@@ -120,20 +121,22 @@ class _Program(object):
 
     """
 
-    def __init__(self,
-                 function_set,
-                 arities,
-                 init_depth,
-                 init_method,
-                 n_features,
-                 const_range,
-                 metric,
-                 p_point_replace,
-                 parsimony_coefficient,
-                 random_state,
-                 transformer=None,
-                 feature_names=None,
-                 program=None):
+    def __init__(
+        self,
+        function_set,
+        arities,
+        init_depth,
+        init_method,
+        n_features,
+        const_range,
+        metric,
+        p_point_replace,
+        parsimony_coefficient,
+        random_state,
+        transformer=None,
+        feature_names=None,
+        program=None,
+    ):
 
         self.function_set = function_set
         self.arities = arities
@@ -150,7 +153,7 @@ class _Program(object):
 
         if self.program is not None:
             if not self.validate_program():
-                raise ValueError('The supplied program is incomplete.')
+                raise ValueError("The supplied program is incomplete.")
         else:
             # Create a naive random program
             self.program = self.build_program(random_state)
@@ -176,8 +179,8 @@ class _Program(object):
             The flattened tree representation of the program.
 
         """
-        if self.init_method == 'half and half':
-            method = ('full' if random_state.randint(2) else 'grow')
+        if self.init_method == "half and half":
+            method = "full" if random_state.randint(2) else "grow"
         else:
             method = self.init_method
         max_depth = random_state.randint(*self.init_depth)
@@ -193,8 +196,7 @@ class _Program(object):
             choice = self.n_features + len(self.function_set)
             choice = random_state.randint(choice)
             # Determine if we are adding a function or terminal
-            if (depth < max_depth) and (method == 'full' or
-                                        choice <= len(self.function_set)):
+            if (depth < max_depth) and (method == "full" or choice <= len(self.function_set)):
                 function = random_state.randint(len(self.function_set))
                 function = self.function_set[function]
                 program.append(function)
@@ -209,8 +211,7 @@ class _Program(object):
                     terminal = random_state.uniform(*self.const_range)
                     if self.const_range is None:
                         # We should never get here
-                        raise ValueError('A constant was produced with '
-                                         'const_range=None.')
+                        raise ValueError("A constant was produced with " "const_range=None.")
                 program.append(terminal)
                 terminal_stack[-1] -= 1
                 while terminal_stack[-1] == 0:
@@ -238,26 +239,26 @@ class _Program(object):
     def __str__(self):
         """Overloads `print` output of the object to resemble a LISP tree."""
         terminals = [0]
-        output = ''
+        output = ""
         for i, node in enumerate(self.program):
             if isinstance(node, _Function):
                 terminals.append(node.arity)
-                output += node.name + '('
+                output += node.name + "("
             else:
                 if isinstance(node, int):
                     if self.feature_names is None:
-                        output += 'X%s' % node
+                        output += "X%s" % node
                     else:
                         output += self.feature_names[node]
                 else:
-                    output += '%.3f' % node
+                    output += "%.3f" % node
                 terminals[-1] -= 1
                 while terminals[-1] == 0:
                     terminals.pop()
                     terminals[-1] -= 1
-                    output += ')'
+                    output += ")"
                 if i != len(self.program) - 1:
-                    output += ', '
+                    output += ", "
         return output
 
     def export_graphviz(self, fade_nodes=None):
@@ -278,42 +279,38 @@ class _Program(object):
         terminals = []
         if fade_nodes is None:
             fade_nodes = []
-        output = 'digraph program {\nnode [style=filled]\n'
+        output = "digraph program {\nnode [style=filled]\n"
         for i, node in enumerate(self.program):
-            fill = '#cecece'
+            fill = "#cecece"
             if isinstance(node, _Function):
                 if i not in fade_nodes:
-                    fill = '#136ed4'
+                    fill = "#136ed4"
                 terminals.append([node.arity, i])
-                output += ('%d [label="%s", fillcolor="%s"] ;\n'
-                           % (i, node.name, fill))
+                output += '%d [label="%s", fillcolor="%s"] ;\n' % (i, node.name, fill)
             else:
                 if i not in fade_nodes:
-                    fill = '#60a6f6'
+                    fill = "#60a6f6"
                 if isinstance(node, int):
                     if self.feature_names is None:
-                        feature_name = 'X%s' % node
+                        feature_name = "X%s" % node
                     else:
                         feature_name = self.feature_names[node]
-                    output += ('%d [label="%s", fillcolor="%s"] ;\n'
-                               % (i, feature_name, fill))
+                    output += '%d [label="%s", fillcolor="%s"] ;\n' % (i, feature_name, fill)
                 else:
-                    output += ('%d [label="%.3f", fillcolor="%s"] ;\n'
-                               % (i, node, fill))
+                    output += '%d [label="%.3f", fillcolor="%s"] ;\n' % (i, node, fill)
                 if i == 0:
                     # A degenerative program of only one node
-                    return output + '}'
+                    return output + "}"
                 terminals[-1][0] -= 1
                 terminals[-1].append(i)
                 while terminals[-1][0] == 0:
-                    output += '%d -> %d ;\n' % (terminals[-1][1],
-                                                terminals[-1][-1])
+                    output += "%d -> %d ;\n" % (terminals[-1][1], terminals[-1][-1])
                     terminals[-1].pop()
                     if len(terminals[-1]) == 2:
                         parent = terminals[-1][-1]
                         terminals.pop()
                         if not terminals:
-                            return output + '}'
+                            return output + "}"
                         terminals[-1].append(parent)
                         terminals[-1][0] -= 1
 
@@ -357,7 +354,8 @@ class _Program(object):
         # Check for single-node programs
         node = self.program[0]
         if isinstance(node, float):
-            return np.repeat(node, X.shape[0])
+            # return np.repeat(node, X.shape[0])
+            return torch.repeat_interleave(torch.Tensor([node]).cuda(), X.shape[0])
         if isinstance(node, int):
             return X[:, node]
 
@@ -374,9 +372,15 @@ class _Program(object):
             while len(apply_stack[-1]) == apply_stack[-1][0].arity + 1:
                 # Apply functions that have sufficient arguments
                 function = apply_stack[-1][0]
-                terminals = [np.repeat(t, X.shape[0]) if isinstance(t, float)
-                             else X[:, t] if isinstance(t, int)
-                             else t for t in apply_stack[-1][1:]]
+                terminals = [
+                    # np.repeat(t, X.shape[0]) if isinstance(t, float) else X[:, t] if isinstance(t, int) else t
+                    torch.repeat_interleave(torch.Tensor([t]).cuda(), X.shape[0])
+                    if isinstance(t, float)
+                    else X[:, t]
+                    if isinstance(t, int)
+                    else t
+                    for t in apply_stack[-1][1:]
+                ]
                 intermediate_result = function(*terminals)
                 if len(apply_stack) != 1:
                     apply_stack.pop()
@@ -387,8 +391,7 @@ class _Program(object):
         # We should never get here
         return None
 
-    def get_all_indices(self, n_samples=None, max_samples=None,
-                        random_state=None):
+    def get_all_indices(self, n_samples=None, max_samples=None, random_state=None):
         """Get the indices on which to evaluate the fitness of a program.
 
         Parameters
@@ -412,8 +415,7 @@ class _Program(object):
 
         """
         if self._indices_state is None and random_state is None:
-            raise ValueError('The program has not been evaluated for fitness '
-                             'yet, indices not available.')
+            raise ValueError("The program has not been evaluated for fitness " "yet, indices not available.")
 
         if n_samples is not None and self._n_samples is None:
             self._n_samples = n_samples
@@ -426,9 +428,8 @@ class _Program(object):
         indices_state.set_state(self._indices_state)
 
         not_indices = sample_without_replacement(
-            self._n_samples,
-            self._n_samples - self._max_samples,
-            random_state=indices_state)
+            self._n_samples, self._n_samples - self._max_samples, random_state=indices_state
+        )
         sample_counts = np.bincount(not_indices, minlength=self._n_samples)
         indices = np.where(sample_counts == 0)[0]
 
@@ -508,8 +509,7 @@ class _Program(object):
             program = self.program
         # Choice of crossover points follows Koza's (1992) widely used approach
         # of choosing functions 90% of the time and leaves 10% of the time.
-        probs = np.array([0.9 if isinstance(node, _Function) else 0.1
-                          for node in program])
+        probs = np.array([0.9 if isinstance(node, _Function) else 0.1 for node in program])
         probs = np.cumsum(probs / probs.sum())
         start = np.searchsorted(probs, random_state.uniform())
 
@@ -553,12 +553,9 @@ class _Program(object):
         removed = range(start, end)
         # Get a subtree to donate
         donor_start, donor_end = self.get_subtree(random_state, donor)
-        donor_removed = list(set(range(len(donor))) -
-                             set(range(donor_start, donor_end)))
+        donor_removed = list(set(range(len(donor))) - set(range(donor_start, donor_end)))
         # Insert genetic material from donor
-        return (self.program[:start] +
-                donor[donor_start:donor_end] +
-                self.program[end:]), removed, donor_removed
+        return (self.program[:start] + donor[donor_start:donor_end] + self.program[end:]), removed, donor_removed
 
     def subtree_mutation(self, random_state):
         """Perform the subtree mutation operation on the program.
@@ -612,8 +609,7 @@ class _Program(object):
         sub_start, sub_end = self.get_subtree(random_state, subtree)
         hoist = subtree[sub_start:sub_end]
         # Determine which nodes were removed for plotting
-        removed = list(set(range(start, end)) -
-                       set(range(start + sub_start, start + sub_end)))
+        removed = list(set(range(start, end)) - set(range(start + sub_start, start + sub_end)))
         return self.program[:start] + hoist + self.program[end:], removed
 
     def point_mutation(self, random_state):
@@ -638,8 +634,7 @@ class _Program(object):
         program = copy(self.program)
 
         # Get the nodes to modify
-        mutate = np.where(random_state.uniform(size=len(program)) <
-                          self.p_point_replace)[0]
+        mutate = np.where(random_state.uniform(size=len(program)) < self.p_point_replace)[0]
 
         for node in mutate:
             if isinstance(program[node], _Function):
@@ -659,8 +654,7 @@ class _Program(object):
                     terminal = random_state.uniform(*self.const_range)
                     if self.const_range is None:
                         # We should never get here
-                        raise ValueError('A constant was produced with '
-                                         'const_range=None.')
+                        raise ValueError("A constant was produced with " "const_range=None.")
                 program[node] = terminal
 
         return program, list(mutate)

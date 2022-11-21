@@ -30,8 +30,7 @@ def check_random_state(seed):
         return np.random.RandomState(seed)
     if isinstance(seed, np.random.RandomState):
         return seed
-    raise ValueError('%r cannot be used to seed a numpy.random.RandomState'
-                     ' instance' % seed)
+    raise ValueError("%r cannot be used to seed a numpy.random.RandomState" " instance" % seed)
 
 
 def _get_n_jobs(n_jobs):
@@ -57,7 +56,7 @@ def _get_n_jobs(n_jobs):
     if n_jobs < 0:
         return max(cpu_count() + 1 + n_jobs, 1)
     elif n_jobs == 0:
-        raise ValueError('Parameter n_jobs == 0 has no meaning.')
+        raise ValueError("Parameter n_jobs == 0 has no meaning.")
     else:
         return n_jobs
 
@@ -68,9 +67,8 @@ def _partition_estimators(n_estimators, n_jobs):
     n_jobs = min(_get_n_jobs(n_jobs), n_estimators)
 
     # Partition estimators between jobs
-    n_estimators_per_job = (n_estimators // n_jobs) * np.ones(n_jobs,
-                                                              dtype=int)
-    n_estimators_per_job[:n_estimators % n_jobs] += 1
+    n_estimators_per_job = (n_estimators // n_jobs) * np.ones(n_jobs, dtype=int)
+    n_estimators_per_job[: n_estimators % n_jobs] += 1
     starts = np.cumsum(n_estimators_per_job)
 
     return n_jobs, n_estimators_per_job.tolist(), [0] + starts.tolist()
